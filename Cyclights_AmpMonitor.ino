@@ -80,24 +80,9 @@ void loop(){
     // get incoming byte:
     in = Serial.read();
     switch(in){
-//      case 'v': // version
-//        Serial.println(appVersion);
-//        break;
       case 'a': // rAhhhh
         enableAutoDisplay = !enableAutoDisplay;
         break;
-//      case 'b':
-//        disableBikes = !disableBikes;
-//        doRelay();
-//        break;
-//      case 'i':
-//        Serial.print("BOX_ID: ");
-//        Serial.println(boxIDstr);
-//        break;
-//      case 'o':
-//        disableOutput = !disableOutput;
-//        doSafety();
-//        break;
       case 'p':
         doDisplay();
         break;
