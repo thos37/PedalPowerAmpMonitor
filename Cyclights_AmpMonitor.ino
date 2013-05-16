@@ -4,9 +4,10 @@
  * Copyright: 2013, Thomas Spellman (http://pedalpowersystems.com)
  * License: This code is distributed under the GPL license: http://www.gnu.org/licenses/gpl.html
  * 1.2: modified for ICOUNT number of inputs
+ * 1.3: fixed pinAmp[] values
  */
 
-const char * VERSION = "1.2";
+const char * VERSION = "1.3";
 const float AVG_CYCLES = 20.0;
 const unsigned int BLINK_INTERVAL = 1000;
 const unsigned int DISPLAY_INTERVAL = 1000;
@@ -19,7 +20,7 @@ const byte ICOUNT = 6;
 
 //IN
 const byte pinVolt = 0;
-const byte pinAmp[ICOUNT] = {0}; 
+const byte pinAmp[ICOUNT] = {1,2,3,4,5,6}; 
 
 //OUT
 const byte pinRelay = 2;
