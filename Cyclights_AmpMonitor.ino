@@ -1,4 +1,13 @@
-const float VOLT_AVG_CYCLES = 20.0;
+/* PedalPowerSystems.com Watt Meter 
+ * Written by:
+ * Thomas Spellman <thomas@thosmos.com>
+ * Copyright: 2013, Thomas Spellman (http://pedalpowersystems.com)
+ * License: This code is distributed under the GPL license: http://www.gnu.org/licenses/gpl.html
+ * 1.2: modified for ICOUNT number of inputs
+ */
+
+const char * VERSION = "1.2";
+const float AVG_CYCLES = 20.0;
 const unsigned int BLINK_INTERVAL = 1000;
 const unsigned int DISPLAY_INTERVAL = 1000;
 const unsigned int VOLT_INTERVAL = 10;
@@ -6,11 +15,11 @@ const unsigned int VOLT_TEST_INTERVAL = 1000;
 
 const float VOLT_CUTOFF = 15.0;
 const float VOLT_RECOVER = 14.5;
+const byte ICOUNT = 6;
 
 //IN
 const byte pinVolt = 0;
-const byte pinAmp1 = 1;
-const byte pinAmp2 = 2;
+const byte pinAmp[ICOUNT] = {0}; 
 
 //OUT
 const byte pinRelay = 2;
@@ -23,30 +32,35 @@ unsigned long lastVoltTest = 0;
 unsigned long lastDisplay = 0;
 unsigned long lastBlink = 0;
 
+byte i = 0;
 boolean isRelayOn = false;
 
 unsigned int voltAdc = 0;
 float voltAdcAvg = 0;
 
-unsigned int amp1Adc = 0;
-float amp1AdcAvg = 0;
-unsigned int amp2Adc = 0;
-float amp2AdcAvg = 0;
+unsigned int ampAdc[ICOUNT] = {0};
+float ampAdcAvg[ICOUNT] = {0};
 
+float volts = 0;
+float amps[ICOUNT] = {0};
+float watts[ICOUNT] = {0};
 
 boolean isBlinking = false;
 
 void setup(){
   
   Serial.begin(57600);
-  Serial.println("PedalPowerSystems.com Capacitor Monitor  v. 1.1!");
+  Serial.print("PedalPowerSystems.com Watt Meter  v. ");
+  Serial.print(VERSION);
+  Serial.println("!");
 
   pinMode(pinRelay, OUTPUT); 
   pinMode(pinLed, OUTPUT);  
 
   pinMode(pinVolt, INPUT); // voltage ADC
-  pinMode(pinAmp1, INPUT); // amps 1 ADC
-  pinMode(pinAmp2, INPUT); // amps 2 ADC
+  for(i = 0; i < ICOUNT; i++){
+    pinMode(pinAmp[i], INPUT); // amps 1 ADC
+  }
 }
 
    char in;
@@ -59,11 +73,6 @@ void loop(){
     lastVolt = time;
     doVolts();
   }
-
-//  if(time - lastVoltTest > VOLT_TEST_INTERVAL){
-//    lastVoltTest = time;
-//    doVoltTest();
-//  }
 
   if(time - lastDisplay > DISPLAY_INTERVAL && enableAutoDisplay){
     lastDisplay = time;
@@ -86,12 +95,6 @@ void loop(){
       case 'p':
         doDisplay();
         break;
-//      case 's':
-//        enableSafety = !enableSafety;
-//        Serial.print("SAFETY: ");
-//        Serial.println(enableSafety);
-//        doSafety();
-//        break;
       case 'd':
         doData();
         break;
@@ -114,16 +117,12 @@ void doVolts(){
 }
 
 void doAmps(){
-  amp1Adc = analogRead(pinAmp1);
-  amp2Adc = analogRead(pinAmp2);
-
-  if(amp1AdcAvg == 0)
-    amp1AdcAvg = amp1Adc;
-  if(amp2AdcAvg == 0)
-    amp2AdcAvg = amp2Adc;
-
-  amp1AdcAvg = average(amp1AdcAvg, amp1Adc);
-  amp2AdcAvg = average(amp2AdcAvg, amp2Adc);
+  for(i = 0; i < ICOUNT; i++){
+    ampAdc[i] = analogRead(pinAmp[i]);
+    if(ampAdcAvg[i] == 0)  
+      ampAdcAvg[i] = ampAdc[i];
+    ampAdcAvg[i] = average(ampAdcAvg[i], ampAdc[i]);
+  }
 }
 
 void doVoltTest(){
@@ -143,41 +142,39 @@ void doVoltTest(){
 float average(float avg, unsigned int val){
   if(avg == 0)
     avg = (float)val;
-  return (((float)val) + (avg * (VOLT_AVG_CYCLES - 1))) / VOLT_AVG_CYCLES;
+  return (((float)val) + (avg * (AVG_CYCLES - 1))) / AVG_CYCLES;
 }
 
-float volts = 0;
-float amps1 = 0;
-float amps2 = 0;
-float watts1 = 0;
-float watts2 = 0;
 
 void calcValues(){
   volts = adc2volts(voltAdcAvg);
-  amps1 = adc2amps(amp1AdcAvg);
-  amps2 = adc2amps(amp2AdcAvg);
-  watts1 = amps1 * volts;
-  watts2 = amps2 * volts;
+  for(i = 0; i < ICOUNT; i++){
+    amps[i] = adc2amps(ampAdcAvg[i]);
+    watts[i] = amps[i] * volts;
+  }
 }
 
 void doDisplay(){
   calcValues();
   Serial.print("volts: ");
   Serial.print(volts);
-  Serial.print(" volts raw: ");
-  Serial.print(voltAdc);
-  Serial.print(" amps1: ");
-  Serial.print(amps1);
-  Serial.print(" amp1 raw: ");
-  Serial.print(amp1Adc);
-  Serial.print(" amps2: ");
-  Serial.print(amps2);
-  Serial.print(" amps2 raw: ");
-  Serial.print(amp2Adc);
-  Serial.print(" watts 1: ");
-  Serial.print(watts1);
-  Serial.print(" watts 2: ");
-  Serial.print(watts2);
+  Serial.print(", volts raw: ");
+  Serial.println(voltAdc);
+  
+  for(i = 0; i < ICOUNT; i++){
+    Serial.print(", amps");
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.print(amps[i]);
+    Serial.print(", amps");
+    Serial.print(i);
+    Serial.print(" raw: ");
+    Serial.print(ampAdc[i]);
+    Serial.print(", watts");
+    Serial.print(i);
+    Serial.print(": ");
+    Serial.println(watts[i]);
+  }
   
 //  if(isRelayOn)
 //  Serial.print("   RELAY is ON!");
@@ -189,17 +186,17 @@ void doData() {
   Serial.println("START_DATA");
   Serial.print("Volt ");
   Serial.println(volts, 2);
-    
-    Serial.print("AMP1 ");
-    Serial.println(amps1, 2);
-    Serial.print("WAT1 ");
-    Serial.println(watts1, 2);
 
-    Serial.print("AMP2 ");
-    Serial.println(amps2, 2);
-    Serial.print("WAT2 ");
-    Serial.println(watts2, 2);
-  
+  for(i = 0; i < ICOUNT; i++){
+    Serial.print("AMP");
+    Serial.print(i);
+    Serial.print(" ");
+    Serial.println(amps[i]);
+    Serial.print("WAT");
+    Serial.print(i);
+    Serial.print(" ");
+    Serial.println(watts[i]);
+  }
   Serial.println("STOP_DATA");
 
 }
