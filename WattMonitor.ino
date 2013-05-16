@@ -7,9 +7,10 @@
  * 1.3: fixed pinAmp[] values
  * 1.4: minor code cleanup
  * 1.5: file name change
+ * 1.6: display fix
  */
 
-const char * VERSION = "1.5";
+const char * VERSION = "1.6";
 
 const float AVG_CYCLES = 20.0;
 const unsigned int BLINK_INTERVAL = 1000;
@@ -165,7 +166,7 @@ void doDisplay(){
   Serial.println(voltAdc);
   
   for(i = 0; i < ICOUNT; i++){
-    Serial.print(", amps");
+    Serial.print("amps");
     Serial.print(i);
     Serial.print(": ");
     Serial.print(amps[i]);
@@ -179,8 +180,6 @@ void doDisplay(){
     Serial.println(watts[i]);
   }
   
-//  if(isRelayOn)
-//  Serial.print("   RELAY is ON!");
   Serial.println();
 }
 
