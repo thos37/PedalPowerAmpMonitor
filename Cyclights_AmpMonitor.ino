@@ -5,9 +5,11 @@
  * License: This code is distributed under the GPL license: http://www.gnu.org/licenses/gpl.html
  * 1.2: modified for ICOUNT number of inputs
  * 1.3: fixed pinAmp[] values
+ * 1.4: minor code cleanup
  */
 
-const char * VERSION = "1.3";
+const char * VERSION = "1.4";
+
 const float AVG_CYCLES = 20.0;
 const unsigned int BLINK_INTERVAL = 1000;
 const unsigned int DISPLAY_INTERVAL = 1000;
@@ -34,6 +36,9 @@ unsigned long lastDisplay = 0;
 unsigned long lastBlink = 0;
 
 byte i = 0;
+char in;
+boolean enableAutoDisplay = false;
+boolean isBlinking = false;
 boolean isRelayOn = false;
 
 unsigned int voltAdc = 0;
@@ -46,7 +51,6 @@ float volts = 0;
 float amps[ICOUNT] = {0};
 float watts[ICOUNT] = {0};
 
-boolean isBlinking = false;
 
 void setup(){
   
@@ -63,9 +67,6 @@ void setup(){
     pinMode(pinAmp[i], INPUT); // amps 1 ADC
   }
 }
-
-   char in;
-boolean enableAutoDisplay = false;
 
 void loop(){
   time = millis();
