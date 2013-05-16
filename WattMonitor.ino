@@ -1,4 +1,4 @@
-/* PedalPowerSystems.com Watt Meter 
+/* PedalPowerSystems.com Watt Monitor 
  * Written by:
  * Thomas Spellman <thomas@thosmos.com>
  * Copyright: 2013, Thomas Spellman (http://pedalpowersystems.com)
@@ -6,9 +6,10 @@
  * 1.2: modified for ICOUNT number of inputs
  * 1.3: fixed pinAmp[] values
  * 1.4: minor code cleanup
+ * 1.5: file name change
  */
 
-const char * VERSION = "1.4";
+const char * VERSION = "1.5";
 
 const float AVG_CYCLES = 20.0;
 const unsigned int BLINK_INTERVAL = 1000;
@@ -55,7 +56,7 @@ float watts[ICOUNT] = {0};
 void setup(){
   
   Serial.begin(57600);
-  Serial.print("PedalPowerSystems.com Watt Meter  v. ");
+  Serial.print("PedalPowerSystems.com Watt Monitor  v. ");
   Serial.print(VERSION);
   Serial.println("!");
 
