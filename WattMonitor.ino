@@ -8,14 +8,15 @@
  * 1.4: minor code cleanup
  * 1.5: file name change
  * 1.6: display fix
+ * 1.7: adjusted amps and volts calcs for RTB smart power box; changed from AMPS0-5 to AMPS1-6.
  */
 
-const char * VERSION = "1.6";
+const char * VERSION = "1.7";
 
 const float AVG_CYCLES = 20.0;
 const unsigned int BLINK_INTERVAL = 1000;
 const unsigned int DISPLAY_INTERVAL = 1000;
-const unsigned int VOLT_INTERVAL = 10;
+const unsigned int MEASURE_INTERVAL = 10;
 const unsigned int VOLT_TEST_INTERVAL = 1000;
 
 const float VOLT_CUTOFF = 15.0;
@@ -32,7 +33,7 @@ const byte pinLed = 13;
 
 unsigned long time = 0;
 unsigned long lastTime = 0;
-unsigned long lastVolt = 0;
+unsigned long lastMeasure = 0;
 unsigned long lastVoltTest = 0;
 unsigned long lastDisplay = 0;
 unsigned long lastBlink = 0;
@@ -48,6 +49,7 @@ float voltAdcAvg = 0;
 
 unsigned int ampAdc[ICOUNT] = {0};
 float ampAdcAvg[ICOUNT] = {0};
+unsigned int adcComp[ICOUNT] = {3,4,2,3,16,10}; //add this to raw adc values to get ~ 512 adc @ 0 amps.
 
 float volts = 0;
 float amps[ICOUNT] = {0};
@@ -73,9 +75,10 @@ void setup(){
 void loop(){
   time = millis();
 
-  if(time - lastVolt > VOLT_INTERVAL){
-    lastVolt = time;
+  if(time - lastMeasure > MEASURE_INTERVAL){
+    lastMeasure = time;
     doVolts();
+    doAmps();
   }
 
   if(time - lastDisplay > DISPLAY_INTERVAL && enableAutoDisplay){
@@ -116,13 +119,12 @@ void doVolts(){
     voltAdcAvg = voltAdc;
 
   voltAdcAvg = average(voltAdcAvg, voltAdc);
-  
-  doAmps();
 }
 
 void doAmps(){
   for(i = 0; i < ICOUNT; i++){
     ampAdc[i] = analogRead(pinAmp[i]);
+    ampAdc[i] = ampAdc[i] + adcComp[i];
     if(ampAdcAvg[i] == 0)  
       ampAdcAvg[i] = ampAdc[i];
     ampAdcAvg[i] = average(ampAdcAvg[i], ampAdc[i]);
@@ -167,15 +169,15 @@ void doDisplay(){
   
   for(i = 0; i < ICOUNT; i++){
     Serial.print("amps");
-    Serial.print(i);
+    Serial.print(i + 1);
     Serial.print(": ");
     Serial.print(amps[i]);
     Serial.print(", amps");
-    Serial.print(i);
+    Serial.print(i + 1);
     Serial.print(" raw: ");
     Serial.print(ampAdc[i]);
     Serial.print(", watts");
-    Serial.print(i);
+    Serial.print(i + 1);
     Serial.print(": ");
     Serial.println(watts[i]);
   }
@@ -191,11 +193,11 @@ void doData() {
 
   for(i = 0; i < ICOUNT; i++){
     Serial.print("AMP");
-    Serial.print(i);
+    Serial.print(i + 1);
     Serial.print(" ");
     Serial.println(amps[i]);
     Serial.print("WAT");
-    Serial.print(i);
+    Serial.print(i + 1);
     Serial.print(" ");
     Serial.println(watts[i]);
   }
@@ -220,50 +222,38 @@ static int volts2adc(float v){
  * Val = Vout / 5V max * 1024 adc val max (2^10 = 1024 max vaue for a 10bit ADC)
  * 2.727/5 * 1024 = 558.4896 
  */
-//int led3volts0 = 559;
 
-/* 24v
- * 24v * 10k/110k = 2.181818181818182
- * 2.1818/5 * 1024 = 446.836363636363636  
- */
-//int led2volts4 = 447;
-
-
- //adc = v * 10/110/3.3 * 1024 == v * 28.209366391184573;
- return v * 28.209366391184573;
- 
- //adc = v * 10/110/5 * 1024 == v * 18.618181818181818;
-//return v * 18.618181818181818;
-
-
+ ////adc = v * 10/110/3.3 * 1024 == v * 28.209366391184573;
+ //adc = v * 2.5/(36.4 + 2.5)/3.3 * 1024 == v * 19.9423541325824
+ return v * 19.9423541325824;
 }
 
 float adc2volts(float adc){
-  // v = adc * 110/10 * 3.3 / 1024 == adc * 0.03544921875;
-  return adc * 0.03544921875; // 36.3 / 1024 = 0.03544921875; 
-  
-  // v = adc * 110/10 * 5 / 1024 == adc * 0.0537109375;
-  //return adc * 0.0537109375; // 55 / 1024 = 0.0537109375; 
+  //// v = adc * 110/10 * 3.3 / 1024 == adc * 0.03544921875;
+  // v = adc * 38.9/2.5 * 3.3 / 1024 == adc * 0.05014453125
+  return adc * 0.05014453125;
 }
 
+//converts adc value to adc pin volts
+float adc2pV(float adc){
+ // adc * 3.3 / 1024 == adc *  0.00322265625
+ return adc * 0.00322265625;
+}
 
 // amp sensor conversion factors
-// 0.055v/A                       // sensor sensitivity (v = adc input volts, not main power system volts) 
-// 3.3v/1024adc                     // adc2v conversion ratio
-// 0A == 1.65v                     // current sensor offset
-//VOUT = (0.055 V/A * i + 1.65 V) * Vcc / 3.3 V
-
-//((adc * 3.3 / 1024) - 1.65) / 0.055;
-// adc2v = xadc * 3.3v/1024adc                         = xadc * 0.00322265625 = vin
+// 0A == 512 adc == 1.65pV // current sensor offset
+// pV/A = .04 pV/A (@5V) * 3.3V/5V = .0264 pV/A (@3.3V) // sensor sensitivity (pV = adc input pin volts) 
+// adc/pV = 1024 adc / 3.3 pV = 310.3030303030303 adc/pV  // adc per pinVolt
+// adc/A = 310.3030303030303 adc/pV * 0.0264 pV/A = 8.192 adc/A
+// A/adc = 1 A / 8.192 adc = 0.1220703125 A/adc
 
 float adc2amps(float adc){
-// adc2A = ((adc * 3.3 / 1024) - 1.65) / .055            = adc * 0.05859375 - 30
-return adc * 0.05859375 - 30;
+  // A/adc = 0.1220703125 A/adc
+  return (adc - 512) * 0.1220703125;
 }
 
 float amps2adc(float amps){
-// A2adc = ((A * .055) + 1.65) * 1024 / 3.3              = A * 17.06666666666667 + 512
-return amps * 17.06666666666667 + 512;
+  // adc/A = 8.192 adc/A
+  return amps * 8.192 + 512;
 }
-
 
